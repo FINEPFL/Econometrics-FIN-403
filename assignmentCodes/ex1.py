@@ -1,6 +1,5 @@
-from numpy.random import uniform
-from numpy.random import normal
-from numpy.linalg import inv
+from numpy.random import uniform, normal
+from numpy.linalg import inv, matrix_rank, norm
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,7 +13,7 @@ import numpy as np
 '''
 class DGP():
     ''' Data generator and estimator of beta'''
-    def __init__(self, beta, numOb=4, numDim=3, epslMean=0, epslVar=4,
+    def __init__(self, beta, numOb=20, numDim=3, epslMean=0, epslVar=4,
                     variMean=0, varVar=10):
         self.beta = beta
         self.numOb = numOb
@@ -39,18 +38,43 @@ class DGP():
         self.estiBeta = np.dot(np.dot(inv(np.dot(self.X.T, self.X)),
                                         self.X.T), self.y)
 
+    def getMP(self, X):
+        ''' obtain the residual maker M and projector P '''
+        P = np.dot(np.dot(X, inv(np.dot(X.T, X))), X.T)
+        M = np.eye(P.shape[0]) - P
+        return P, M
+
     def checker(self):
         b0 = np.reshape(np.asarray(self.beta), (self.numDim, 1))
         bTXTy = np.dot(np.dot(b0.T, self.X.T), self.y)
         yTXb = np.dot(np.dot(self.y.T, self.X), b0)
 
         print 'Comparing b\'X\'y = y\'Xb (we use close since'
-        print 'they will not be strictly equals to each other):'
+        print 'they will not be strictly equals to each other)(c):'
         print np.isclose(bTXTy, yTXb)[0][0]
 
-        P = np.dot(np.dot(self.X, inv(np.dot(self.X.T, self.X))), self.X.T)
-        M = np.eye(P.shape[0]) - P
-        # it can be easily identified that P and M are symmetric and idepometic
+        '''it can be easily identified that P and M are symmetric and
+           idepomtent  (d) '''
+        P, M = self.getMP(self.X)
+
+        ''' verify the Frisch-Waugh Theorem (e)'''
+        X1 = self.X[:,0:(self.numDim-1)]
+        X2 = np.reshape(self.X[:, -1], (self.numOb, 1))
+        P1, M1 = self.getMP(X1)
+        b2 = np.dot(np.dot(np.dot(inv(np.dot(np.dot(X2.T, M1), X2)), X2.T), M1), self.y)
+        print 'The approximation and actual value of b2 is:', b2[0][0], self.beta[-1]
+
+        ''' Compute SSE of a constant+x model and complete model (f) '''
+        sseFull = np.dot(M, self.y)
+        ssePart = np.dot(M1, self.y)
+        print norm(sseFull)**2, norm(ssePart)**2 # observe that error sseFull is much smaller than ssePart
+
+        ''' compute R squre, e = My, SST = SSR + SSE '''
+        M0 = np.eye(self.numOb) - np.dot(np.ones((self.numOb, 1)), np.ones((1, self.numOb)))/self.numOb
+        sst = np.dot(np.dot(self.y.T, M0), self.y)
+
+        Rsqre = (sst-norm(sseFull)**2)/sst
+        print 'R^2: ', Rsqre[0][0]
 
 if __name__ == '__main__':
     data = DGP(beta=[0.5, 0.8, 1.3])
