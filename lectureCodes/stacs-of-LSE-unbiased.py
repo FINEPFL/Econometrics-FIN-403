@@ -5,7 +5,7 @@ from numpy.linalg import inv
 import numpy as np
 import matplotlib.pyplot as plt
 
-class unbiasednessProof:
+class unbiasednessSimulate:
     ''' a monte carlo simulation for proofing the
     unbiasedness of the least square estimator '''
 
@@ -44,7 +44,7 @@ class unbiasednessProof:
 
 
 if __name__ == '__main__':
-    ubp = unbiasednessProof()
+    ubp = unbiasednessSimulate()
     ubp.DGP()
     ubp.similuting()
     ubp.plotting()
