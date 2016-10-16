@@ -1,32 +1,44 @@
 %% data generation process
 clear; clc; close all;
 
-n = 100;
+n = 20;
 x = 10 * rand(n, 1);
 z = 10 * rand(n, 1);
-epsl = normrnd(0, 4, [n, 1]);
+epsl = normrnd(0, sqrt(4), [n, 1]);
 y = 0.5 .* ones(n, 1) + 0.8 .* x + 1.3 .* z + epsl;
 X = [ones(n, 1), x, z];
 
 %% OLS estimator
-b = (X' * X) \ X' * y;
-y_hat = X * b;
+b = (X' * X) \ X' * y
 
 %% c) check if b'X'y == y'Xb
-if (b' * X' * y ~= y' * X * b)
-    disp('Equal');
-else
-    disp('Not Equal');
+if (b' * X' * y - y' * X * b < 1e-5)
+    disp('The two terms are equal!')
 end
+
 %% d) get M and P, check symmetric and idempotent
 getP = @(T)  T * ((T' * T)\T');
 getM = @(T) eye(n) - T * ((T' * T)\T');
 
 M = getM(X);
-sum(sum(M * M - M)) < 1e-5  %idepotent
+MT = M';
+if(sum(sum(abs(MT - M))) < 1e-5)
+    disp('Transpose of M is equal to M')
+end
 
 P = getP(X);
-sum(sum(P * P - P)) < 1e-5  %idepotent
+PT = P';
+if(sum(sum(abs(PT - P))) < 1e-5)
+    disp('Transpose of P is equal to P')
+end
+
+if(sum(sum(abs(M * M - M))) < 1e-5)  %idempotent
+    disp('M is idempotent!')
+end
+
+if(sum(sum(abs(P * P - P))) < 1e-5) %idempotent
+    disp('P is idempotent!')
+end
 
 %% FW Theorem verification
 X1 = X(:, 1:end-1);
@@ -35,21 +47,24 @@ X2 = X(:, end);
 P1 = getP(X1);
 M1 = getM(X1);
 
-b2 = (X2' * M1' * X2) \ (X2' * M1 * y); % b2 is actually equals to b[3]
-%% f)
-y_partial = 0.5 .* ones(n, 1) + 0.8 .* x + epsl;
-b_partial = (X1' * X1) \ X1' * y_partial;
-y_partial_hat = X1 * b_partial;
+b2 = (X2' * M1' * X2) \ (X2' * M1 * y) 
+b
 
-SSE_partial = sum((y_partial_hat - y_partial).^2)
-SSE_comp = sum((y - y_hat).^2)
+%% f)
+e_comp = M * y;
+e_partial = M1 * y;
+
+SSE_comp = e_comp' * e_comp
+SSE_partial = e_partial' * e_partial
 
 %% g)
-SSR_partial = sum(y_partial_hat.^2);
-SST_partial = sum(y_partial.^2);
+M0 = eye(n) - ones(n, 1) * ones(1, n)./n;
 
-SSR_comp = sum(y_hat.^2);
-SST_comp = sum(y.^2);
+SST = y' * M0 * y;
 
-R2_partial = SSR_partial/SST_partial
-R2_comp = SSR_comp/SST_comp
+R2_comp = 1 - SSE_comp/SST
+R2_adj_comp = 1 - (SSE_comp/(n - 3))/(SST/(n - 1))
+
+R2_partial = 1 - SSE_partial/SST
+R2_adj_partial = 1 - (SSE_partial/(n - 3))/(SST/(n - 1))
+
